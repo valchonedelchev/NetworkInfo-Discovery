@@ -385,8 +385,10 @@ sub update_interface {
 
     # then over write the old one with the passed args
     while (my ($k, $v) = each(%$args) ) {
+        $v="" unless $v;
+        $k="" unless $k;
 	if (exists $newint{$k}) {
-	    if ($newint{$k} ne $v) {
+	    if ($v and $newint{$k} ne $v) {
 		# make an event here...
 		#print "changed interface $interface key $k from $newint{$k} to $v\n";
 		$newint{$k} = $v;

@@ -1,6 +1,10 @@
 Revision history for NetworkInfo::Discovery and related modules:
 ----------------------------------------------------------------
 
+0.12 Thu Sep 25 18:37:12 EDT 2003
+   - made some fixes for the scan module.  i somehow forgot to do this
+     in 0.10
+   
 0.11 Mon Mar 10 12:31:02 EST 2003
    - When adding an interface with no subnet, try to guess the 
      subnet address.

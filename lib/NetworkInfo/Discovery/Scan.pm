@@ -14,38 +14,42 @@ NetworkInfo::Discovery::Scan - host/port scanner
 
 =head1 SYNOPSIS
 
-  use NetworkInfo::Discovery;
-  use NetworkInfo::Discovery::Scan;
+    use NetworkInfo::Discovery;
+    use NetworkInfo::Discovery::Register;
+    use NetworkInfo::Discovery::Scan;
+    
+    my $disc = new NetworkInfo::Discovery::Register (
+        'file' => '/tmp/scan.register',
+        'autosave' => 1
+        )
+        || warn ("failed to make new obj");
+    
+    my $scan = new NetworkInfo::Discovery::Scan (
+        hosts=>["localhost", "127.0.0.1"],
+        ports=>[53,99,1000..1004],
+        timeout=>1,
+        'wait'=>0,
+        protocol => 'tcp'
+    );
+    
+    $scan->do_it();
+    $disc->add_interface($_) for ($scan->get_interfaces);
+    
+    foreach my $h ($scan->get_interfaces) {
+        print $h->{ip} . "\n";
+        print "    has tcp ports: " . join(',',@{$h->{tcp_open_ports}}) . "\n" if (exists $h->{tcp_open_ports}) ;
+    }
+    
+    $scan->{protocol} = 'tcp';
+    $scan->{ports} = [20..110];
+    $scan->do_it();
+    $disc->add_interface($_) for ($scan->get_interfaces);
+    
+    foreach my $h ($scan->get_interfaces) {
+        print $h->{ip} . "\n";
+        print "    has tcp ports: " . join(',',@{$h->{tcp_open_ports}}) . "\n" if (exists $h->{tcp_open_ports}) ;
+    }
 
-  my $disc = new NetworkInfo::Discovery (
-      'file' => '/tmp/test.xml',
-      'autosave' => 1
-      )
-      || warn ("failed to make new obj");
-
-  my $scan = new NetworkInfo::Discovery::Scan (
-      hosts=>["localhost", "10.20.1.0/24", "123.234.212.123"], 
-      ports=>[53,99,1000..1004], 
-      timeout=>1, 
-      'wait'=>0, 
-      protocol => 'udp'
-  );
-
-  $scan->do_it();
-  $disc->add_hosts($scan->get_hosts);
-
-  foreach my $h ($scan->get_hosts) {
-      print $h->as_string ."\n";
-  }
-
-  $scan->{protocol} = 'tcp';
-  $scan->{ports} = [20..110];
-  $scan->do_it();
-  $d->add_hosts($scan->get_hosts);
-
-  foreach my $h ($scan->get_hosts) {
-      print $h->as_string ."\n";
-  }
 
 =head1 DESCRIPTION
 
@@ -144,7 +148,7 @@ sub do_it {
     $self->scan;
     $self->make_hosts;
 
-    return $self->get_hosts;
+    return $self->get_interfaces;
 }
 
 
@@ -315,13 +319,13 @@ sub make_hosts {
 
 	my $hostObj;
 	if ($self->{protocol} eq 'udp') {
-	    $self->add_host({
+	    $self->add_interface({
 		ip=>$host,
 		dns=>$self->lookup_ip($host),
 		udp_open_ports=> $ports,
 	    });
 	} else {
-	    $self->add_host({
+	    $self->add_interface({
 		ip=>$host,
 		dns=>$self->lookup_ip($host),
 		tcp_open_ports=> $ports,
