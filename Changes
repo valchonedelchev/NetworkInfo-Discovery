@@ -1,0 +1,31 @@
+Revision history for Perl extension NetworkInfo::Discovery.
+
+0.05  Mon Dec 30 10:33:49 EST 2002
+    - Modules renamed as NetworkInfo:: for CPAN
+
+0.04  Fri Dec 27 13:09:14 EST 2002
+    - Added find_host and get_host to Discovery.pm.  This allows you to
+    locate a host in the graph and to make a new C<Host> out of a few
+    query attributes.
+    - Added a TODO file, in case someone wants to join in the effort here.
+
+0.03  Mon Dec 23 17:45:46 EST 2002
+    - Added documentation to Net::Discovery and Net::Discovery::Host
+    - Added dependencies into the Makefile.PL so they should get caught
+	on a perl Makefile.PL
+
+0.02  Sun Dec 22 20:07:28 EST 2002
+    - Added Net::Discovery::Detect.  This should now be subclassed to 
+	write detection modules.  Look at ::Traceroute and ::Sniff for 
+	examples.
+    - Added Net::Discovery::Sniff.pm to sniff ethernet traffic.
+    - Added Net::Discovery::Traceroute.pm to pick up hosts and hops
+	between end points.
+    - Added tests for all of the above.
+    - Added the ability to add edges to the network graph with weights
+	based on latency.
+    
+0.01  Fri Nov  1 13:15:06 2002
+    - original version; created by h2xs 1.21 with options
+		-X -n Net::Discovery
+

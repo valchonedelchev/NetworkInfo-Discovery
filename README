@@ -1,0 +1,44 @@
+NetworkInfo/Discovery version 0.05
+==========================
+
+NetworkInfo::Discovery is a toolset for the discovery of network hosts and topology.
+
+NetworkInfo::Discovery handles discovered hosts.  It can save and restore the the known hosts.
+NetworkInfo::Discovery::Host represents all that we know about a discovered host.
+NetworkInfo::Discovery::Sniff is a discovery module that sniffs the local segment to discover information about hosts.
+NetworkInfo::Discovery::Traceroute is a discovery module that maps the hops from the local segment to other know hosts, helping to show us the topology.
+
+
+
+
+INSTALLATION
+
+To install this module type the following:
+
+   perl Makefile.PL
+   make
+   make test
+   make install
+
+DEPENDENCIES
+
+This module requires these other modules and libraries:
+
+  NetworkInfo::Discovery
+    Graph		0.20101
+    Graph-ReadWrite	1.07
+	XML-Parser	2.31
+	XML-Writer	0.4
+	
+  NetworkInfo::Discovery::Sniff
+    Net-Pcap		0.04
+    NetPacket		0.03
+
+  NetworkInfo::Discovery::Traceroute
+    Net-Traceroute	1.05
+
+
+COPYRIGHT AND LICENCE
+
+Copyright (C) 2002 Thomas P. Scanlan iv
+

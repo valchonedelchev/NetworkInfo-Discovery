@@ -1,0 +1,258 @@
+package NetworkInfo::Discovery::Sniff;
+
+use vars qw(@ISA);
+use strict;
+use warnings;
+
+use NetworkInfo::Discovery::Detect;
+@ISA = ("NetworkInfo::Discovery::Detect");
+
+use Net::Pcap;
+use NetPacket::Ethernet qw(:types);
+use NetPacket::IP;
+use NetPacket::TCP;
+use NetPacket::UDP;
+use NetPacket::ARP qw(:ALL);
+use NetPacket::ICMP qw(:ALL); 
+
+
+sub new {
+    my $classname  = shift;
+    my $self       = $classname->SUPER::new(@_);
+    my %args = @_;
+
+    $self->timeout(60);
+    $self->maxcapture(10);
+    $self->snaplen(1500);
+    $self->promisc(1);
+    
+    # for all args, see if we can autoload them
+    foreach my $attr (keys %args) {
+	if ($self->can($attr) ) {
+	    $self->$attr( $args{$attr} );
+	} else {
+	    print "error calling NetworkInfo::Discovery::Sniff-> $attr (  $args{$attr} ) : no method $attr \n";
+	}
+    }
+
+    return $self;
+} 
+
+sub capture {
+    my $self = shift;
+
+    $self->{'device'} = Net::Pcap::lookupdev(\$self->{'error'});
+    defined $self->{'error'} 
+	&& die 'Unable to determine network device for monitoring - ', $self->{'error'};
+
+    Net::Pcap::lookupnet($self->device, \$self->{'address'}, \$self->{'netmask'}, \$self->{'error'})
+	&&  die 'Unable to look up device information for ', $self->device, ' - ', $self->error;
+
+    $self->{'object'} = Net::Pcap::open_live(
+		    $self->device, 
+		    $self->snaplen, 
+		    $self->promisc, 
+		    $self->timeout, 
+		    \$self->{'error'}
+		);
+
+    defined $self->{'object'} 
+	|| die 'Unable to create packet capture on device ', $self->device, ' - ', $self->{'error'}; 
+
+    Net::Pcap::compile( $self->object, \$self->{'filter'}, '', 0, $self->netmask) 
+	&& die 'Unable to compile packet capture filter';
+
+    Net::Pcap::setfilter($self->object, $self->filter) 
+	&& die 'Unable to set packet capture filter';
+
+    Net::Pcap::loop($self->object, $self->maxcapture, \&get_packets, \@{$self->{'packetlist'}}) ;
+	# ||   die 'Unable to perform packet capture';
+    
+    Net::Pcap::close($self->object);
+
+}
+
+sub get_packets {
+    #    print "get_pkt\n" if $DEBUG ;
+    my ( $arg , $hdr, $pkt) = @_ ;
+    push ( @$arg , $pkt ) ;
+}
+
+sub process_ip_packets {
+    my $self = shift;
+
+    foreach my $packet ( @{$self->{'packetlist'}} ) {
+        my $ether_obj = NetPacket::Ethernet->decode($packet);
+        my $ether_data = $ether_obj->{"data"};
+    
+	if ($ether_obj->{type} == ETH_TYPE_ARP ) {
+	    my $arp_data = NetPacket::ARP->decode($ether_data);
+
+	    if ($arp_data->{opcode} == ARP_OPCODE_REQUEST) {
+		my $shost = new NetworkInfo::Discovery::Host (interface => hex2ip($arp_data->{spa}),
+						      mac => hex2mac($arp_data->{sha}) );
+		push(@{$self->{'hostlist'}}, $shost);
+
+	    } elsif ($arp_data->{opcode} == ARP_OPCODE_REPLY) {
+		my $shost = new NetworkInfo::Discovery::Host (interface => hex2ip($arp_data->{spa}),
+						      mac	=> hex2mac($arp_data->{sha}) );
+		my $dhost = new NetworkInfo::Discovery::Host (interface => hex2ip($arp_data->{tpa}),
+						      mac	=> hex2mac($arp_data->{tha}) );
+		push(@{$self->{'hostlist'}}, $shost, $dhost);
+
+	    } elsif ($arp_data->{opcode} == RARP_OPCODE_REQUEST) {
+		print "got RARP_OPCODE_REQUEST\n";
+	    } elsif ($arp_data->{opcode} == RARP_OPCODE_REPLY) {
+		print "got RARP_OPCODE_REPLY\n";
+	    }
+    
+        } elsif ($ether_obj->{type} == ETH_TYPE_IP ) {
+	    ## for IP packets
+       
+	    my $ip = NetPacket::IP->decode($ether_data);
+        
+	    if ($ip->{"proto"}  == 6 ) {
+		# TCP Stuff
+	        my ($sports, $dports); 
+		my $tcp = NetPacket::TCP->decode($ip->{'data'});
+		push @$sports, $tcp->{'src_port'};
+		push @{$dports}, $tcp->{'dest_port'};
+
+		my $shost = new NetworkInfo::Discovery::Host (interface => "$ip->{'src_ip'}");
+		my $dhost = new NetworkInfo::Discovery::Host (interface => "$ip->{'dest_ip'}");
+
+		push(@{$self->{'hostlist'}}, $shost, $dhost);
+
+            } elsif ($ip->{"proto"}  == 17 ) {
+	       # UDP Stuff
+	       my $udp = NetPacket::UDP->decode($ip->{'data'});
+    
+	       my ($sports, $dports); 
+	       push @$sports, $udp->{'src_port'};
+	       push @{$dports}, $udp->{'dest_port'};
+
+		my $shost = new NetworkInfo::Discovery::Host (interface => "$ip->{'src_ip'}");
+		my $dhost = new NetworkInfo::Discovery::Host (interface => "$ip->{'dest_ip'}");
+
+		push(@{$self->{'hostlist'}}, $shost, $dhost);
+    
+            } elsif ($ip->{"proto"}  == 1 ) {
+		# ICMP stuff here
+		my $icmp = NetPacket::ICMP->decode($ip->{'data'});
+    
+		my $type;
+		if ($icmp->{type} ==  ICMP_ECHOREPLY ) {
+		    $type = "ICMP_ECHOREPLY";
+		} elsif ($icmp->{type} ==  ICMP_UNREACH ) {
+		    $type = "ICMP_UNREACH";
+		} elsif ($icmp->{type} ==  ICMP_SOURCEQUENCH ) {
+		    $type = "ICMP_SOURCEQUENCH";
+		} elsif ($icmp->{type} ==  ICMP_REDIRECT ) {
+		    $type = "ICMP_REDIRECT";
+		} elsif ($icmp->{type} ==  ICMP_ECHO ) {
+		    $type = "ICMP_ECHO";
+		} elsif ($icmp->{type} ==  ICMP_ROUTERADVERT ) {
+		    $type = "ICMP_ROUTERADVERT";
+		} elsif ($icmp->{type} ==  ICMP_ROUTERSOLICIT ) {
+		    $type = "ICMP_ROUTERSOLICIT";
+		} elsif ($icmp->{type} ==  ICMP_TIMXCEED ) {
+		    $type = "ICMP_TIMXCEED";
+		} elsif ($icmp->{type} ==  ICMP_PARAMPROB ) {
+		    $type = "ICMP_PARAMPROB";
+		} elsif ($icmp->{type} ==  ICMP_TSTAMP ) {
+		    $type = "ICMP_TSTAMP";
+		} elsif ($icmp->{type} ==  ICMP_TSTAMPREPLY ) {
+		    $type = "ICMP_TSTAMPREPLY";
+		} elsif ($icmp->{type} ==  ICMP_IREQ ) {
+		    $type = "ICMP_IREQ";
+		} elsif ($icmp->{type} ==  ICMP_MASREQ ) {
+		    $type = "ICMP_MASREQ";
+		} elsif ($icmp->{type} ==  ICMP_IREQREPLY ) {
+		    $type = "ICMP_IREQREPLY";
+		} elsif ($icmp->{type} ==  ICMP_MASKREPLY ) {
+		    $type = "ICMP_MASKREPLY";
+		}
+    
+		my $shost = new NetworkInfo::Discovery::Host (interface => "$ip->{'src_ip'}");
+		my $dhost = new NetworkInfo::Discovery::Host (interface => "$ip->{'dest_ip'}");
+
+		push(@{$self->{'hostlist'}}, $shost, $dhost);
+            }
+    
+        } else {
+	    print("Unknown Ethernet Type: $ether_obj->{src_mac}:$ether_obj->{dest_mac} $ether_obj->{type}\n");
+    
+        }
+    }
+    return @{$self->{'hostlist'}};
+}
+
+sub filter {
+    my $self = shift;
+    $self->{'filter'} = shift if (@_) ;
+    return $self->{'filter'};
+}
+sub object {
+    my $self = shift;
+    $self->{'object'} = shift if (@_) ;
+    return $self->{'object'};
+}
+sub device {
+    my $self = shift;
+    $self->{'device'} = shift if (@_);
+    return $self->{'device'};
+}
+sub address {
+    my $self = shift;
+    $self->{'address'} = shift if (@_);
+    return $self->{'address'};
+}
+sub netmask {
+    my $self = shift;
+    $self->{'netmask'} = shift if (@_);
+    return $self->{'netmask'};
+}
+sub error {
+    my $self = shift;
+    $self->{'error'} = shift if (@_);
+    return $self->{'error'};
+}
+sub snaplen {
+    my $self = shift;
+    $self->{'snaplen'} = shift if (@_);
+    return $self->{'snaplen'};
+}
+sub maxcapture {
+    my $self = shift;
+    $self->{'maxcapture'} = shift if (@_);
+    return $self->{'maxcapture'};
+}
+sub timeout {
+    my $self = shift;
+    $self->{'timeout'} = shift if (@_);
+    return $self->{'timeout'};
+}
+sub promisc {
+    my $self = shift;
+    $self->{'promisc'} = shift if (@_);
+    return $self->{'promisc'};
+}
+
+sub hex2mac {
+    my $data = shift;
+
+    my ($a, $b, $c, $d, $e, $f) = ($data =~ m/^(..)(..)(..)(..)(..)(..)$/);
+    return "$a:$b:$c:$d:$e:$f"; 
+}
+
+sub hex2ip {
+    my $data = shift;
+
+    my ($a, $b, $c, $d) = ($data =~ m/^(..)(..)(..)(..)$/);
+    $a = hex $a;
+    $b = hex $b;
+    $c = hex $c;
+    $d = hex $d;
+    return "$a.$b.$c.$d"; 
+}
+1;
