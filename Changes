@@ -1,6 +1,30 @@
 Revision history for NetworkInfo::Discovery and related modules:
 ----------------------------------------------------------------
 
+0.10 Wed Feb  5 12:20:17 EST 2003
+   x Added a pre-alpha version of a Tk front end to display the network
+     in all it's glory.  this was for nothing... see next note. will
+     need to redo this for the new register.
+     
+     Fri Feb 14 12:24:38 EST 2003
+   - Switching from using Graph as the internal representation.  It is 
+     too slow, and memory inefficent.  Will now be using my own
+     "Register" that allows faster access and information to be better
+     agregatted.  This means most of the modules will be changing.
+   - Sniff was updated to reflect the change.
+
+     Wed Feb 19 16:25:54 EST 2003
+   - Moved the ACLs from Discover.pm to Register.pm.  Newly found 
+     interfaces are checked against the ACLs as they are added to the
+     register.  You can still check by hand, but this is a time saver
+     for me.
+   - Added methods for reading and writing the register from and to a
+     file using Storable.  This should be in the core perl distribution
+     for most folks.
+   - Made changes to all the examples to reflect the new Register.
+   - Made changes to all the detection modules, and Detect.pm to work
+     with the new register.
+
 0.09 Wed Jan 15 16:42:05 EST 2003
    - added a temporary hack to Traceroute.pm to prevent traceroute from
      getting a broadcast address.
@@ -20,18 +44,22 @@ Revision history for NetworkInfo::Discovery and related modules:
     - Ran podchecker on Discovery.pm, Host.pm, Scan.pm, and Detect.pm.
 
 0.07  Wed Jan  8 23:28:42 EST 2003
-    - Finished off the first attempt at acls.  look at the test.pl or example/sample.pl for examples.
+    - Finished off the first attempt at acls.  look at the test.pl or 
+      example/sample.pl for examples.
 
 0.06  Tue Jan  7 15:20:14 EST 2003
-    - added "do_it", "add_host", "add_hop", "get_hosts", "get_hops" functions to "Detect.pm".
+    - added "do_it", "add_host", "add_hop", "get_hosts", "get_hops" functions
+      to "Detect.pm".
     - Updated to reflect this: Sniff.pm, Traceroute.pm, and the test scripts.
 
       Mon Jan  6 17:58:43 EST 2003
-    - added the acl_match function.  hope to add acl entries soon, then I can stop mapping the whole internet.
+    - added the acl_match function.  hope to add acl entries soon, then I can
+      stop mapping the whole internet.
 
       Thu Jan  2 19:07:35 EST 2003
     - Added a few more bits of info to Host.
-    - The Discovery server is now marked so so that we can find it easily later. 
+    - The Discovery server is now marked so so that we can find it easily
+      later. 
 
 0.05  Mon Dec 30 10:33:49 EST 2002
     - Modules renamed as NetworkInfo:: for CPAN

@@ -1,6 +1,6 @@
 Changes
 lib/NetworkInfo/Discovery.pm
-lib/NetworkInfo/Discovery/Host.pm
+lib/NetworkInfo/Discovery/Register.pm
 lib/NetworkInfo/Discovery/Sniff.pm
 lib/NetworkInfo/Discovery/Traceroute.pm
 lib/NetworkInfo/Discovery/Scan.pm
@@ -10,6 +10,13 @@ example/sample.pl
 example/loop.pl
 Makefile.PL
 MANIFEST
-README
+README.txt
 TODO
 test.pl
+Graph-Tk/TkGraph.pm
+Graph-Tk/graph.pl
+Graph-Tk/README
+Tk/graph.pl
+Tk/lib/NetworkInfo/Discovery/Tk.pm
+Tk/README
+

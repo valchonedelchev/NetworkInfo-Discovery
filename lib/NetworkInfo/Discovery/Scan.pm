@@ -4,7 +4,6 @@ use strict;
 use warnings;
 
 use NetworkInfo::Discovery::Detect;
-use NetworkInfo::Discovery::Host;
 use base ("NetworkInfo::Discovery::Detect");
 
 use Socket;
@@ -316,20 +315,18 @@ sub make_hosts {
 
 	my $hostObj;
 	if ($self->{protocol} eq 'udp') {
-	    $hostObj = new NetworkInfo::Discovery::Host (
-		    ipaddress => $host,
-		    udp_open_ports => $ports,
-		    dnsname => $self->lookup_ip($host),
-		);
+	    $self->add_host({
+		ip=>$host,
+		dns=>$self->lookup_ip($host),
+		udp_open_ports=> $ports,
+	    });
 	} else {
-	    $hostObj = new NetworkInfo::Discovery::Host (
-		    ipaddress => $host,
-		    tcp_open_ports => $ports,
-		    dnsname => $self->lookup_ip($host),
-		);
+	    $self->add_host({
+		ip=>$host,
+		dns=>$self->lookup_ip($host),
+		tcp_open_ports=> $ports,
+	    });
 	}
-
-	$self->add_host($hostObj);
     }
 
 }
@@ -436,8 +433,6 @@ Tom Scanlan <tscanlan@they.gotdns.org>
 Tom Scanlan <tscanlan@they.gotdns.org>
 
 =head1 SEE ALSO
-
-L<NetworkInfo::Discovery::Host>
 
 L<NetworkInfo::Discovery::Detect>
 

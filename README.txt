@@ -1,23 +1,34 @@
 NetworkInfo/Discovery 
 ==========================
 
-NetworkInfo::Discovery	is a toolset for the discovery of network hosts 
-			and topology.  This module handles discovered 
-			hosts.  It can save and restore the the known hosts.
+Note that this is alpha software.  Use at your own risk, and don't complain 
+too loudly unless you are giving good advice.  There is much work to be done
+with these modules, so check out the TODO or email me your comments, and lets
+get cracking.
 
+
+NetworkInfo::Discovery	is a toolset for the discovery of network information
+			and topology.
+
+NetworkInfo::Register	This module handles discovered interfaces, subnets,
+			and gateways. It can save and restore the the things
+			that we have discovered, and helps fill out unknown
+			details.
+			
 NetworkInfo::Discovery::Host	represents all that we know about a 
 				discovered host.
 
 NetworkInfo::Discovery::Sniff	is a discovery module that sniffs the local
-				segment to discover information about hosts.
+				segment to discover information about
+				interfaces.
 				
 NetworkInfo::Discovery::Traceroute is a discovery module that maps the hops
-				   from the local segment to other know
-				   hosts, helping to show us the topology.
+				   from the local segment to other known
+				   interfaces, helping to show us the topology.
 
 NetworkInfo::Discovery::Scan	is a discovery module that scans ranges of
 				ip addresses for open ports, and to detect
-				new hosts.
+				new interfaces.
 
 INSTALLATION
 
@@ -33,6 +44,7 @@ SYSTEM REQUIREMENTS
 So far we have only tested on the following setups.  I am looking for 
 contributors, even if you just want to install and run the test scripts.
 
+Perl 5.6.1, Solaris 7
 perl 5.8.0, linux-pcc
 perl 5.8.0, RedHat Linux 8.0
 perl 5.6.0, RedHat Linux 7.2
@@ -49,12 +61,6 @@ DEPENDENCIES
 
 This module requires these other modules and libraries:
 
-  NetworkInfo::Discovery
-    Graph		0.20101
-    Graph-ReadWrite	1.07
-	XML-Parser	2.31
-	XML-Writer	0.4
-	
   NetworkInfo::Discovery::Sniff
     Net-Pcap		0.04
     NetPacket		0.03
@@ -62,6 +68,10 @@ This module requires these other modules and libraries:
   NetworkInfo::Discovery::Traceroute
     Net-Traceroute	1.05
 
+AUTHOR
+
+Please send any questions, bugs, or contributions to
+Tom Scanlan <tscanlan@they.gotdns.org>
 
 COPYRIGHT AND LICENCE
 

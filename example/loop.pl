@@ -5,40 +5,43 @@ use warnings;
 use strict;
 
 use NetworkInfo::Discovery;
-use NetworkInfo::Discovery::Host;
+use NetworkInfo::Discovery::Register;
 use NetworkInfo::Discovery::Sniff;
 use NetworkInfo::Discovery::Traceroute;
 
-my $d = new NetworkInfo::Discovery ('file' => 'sample.xml', 'autosave' => 1) || warn ("failed to make new obj");
+my $sniffmax = 100;
+my $d = new NetworkInfo::Discovery::Register ('file' => 'sample.register', 'autosave' => 1) 
+    || warn ("failed to make new obj");
 
 
 my @traced;
 
 while (1) {
-    # sniff for awhile
-    print "sniffing for 60 packets\n";
+    # sniff for a while
+    print "sniffing for $sniffmax packets\n";
     my $s = new NetworkInfo::Discovery::Sniff;
-    $s->maxcapture(60);
+    $s->maxcapture($sniffmax);
     $s->do_it;
-    my @hosts = $s->get_hosts;
+    my @hosts = $s->get_interfaces;
 
     print "found $#hosts  hosts and adding them to the list\n";
-    $d->add_hosts(@hosts);
+
+    $d->add_interface($_) for (@hosts);
 
     foreach my $h (@hosts) {
-	(print "----- already traced to " . $h->ipaddress . "\n" && next ) if (grep { $_ eq $h->ipaddress  } @traced);
-	print "Tracing to " . $h->ipaddress . "\n";
-	push (@traced, $h->ipaddress); 
-	my $t = new NetworkInfo::Discovery::Traceroute (host=>$h->ipaddress, max_ttl=>4);
+	(print "----- already traced to " . $h->{ip} . "\n" && next ) if (grep { $_ eq $h->{ip}  } @traced);
+	print "Tracing to " . $h->{ip} . "\n";
+	push (@traced, $h->{ip}); 
+	my $t = new NetworkInfo::Discovery::Traceroute (host=>$h->{ip}, max_ttl=>4);
 
 	$t->do_it;
-	$d->add_hosts($t->get_hosts);
-	$d->add_hops($t->get_hops);
+	$d->add_interface($_) for ($t->get_interfaces);
+	$d->add_gateway($_) for ($t->get_gateways);
     }
+    $d->write_register;
+    $d->print_register;
 
 }
 
-    $d->write_graph;
-    $d->print_graph;
 
 

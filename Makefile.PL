@@ -4,11 +4,7 @@ use ExtUtils::MakeMaker;
 WriteMakefile(
     'NAME'		=> 'NetworkInfo::Discovery',
     'VERSION_FROM'	=> 'lib/NetworkInfo/Discovery.pm', # finds $VERSION
-    'PREREQ_PM'		=> {'Graph' => 0.20101,
-			    'Graph::Reader' => 0,
-			    'Graph::Writer' => 0,
-				'XML::Parser' => 2.31,
-				'XML::Writer' => 0.4,
+    'PREREQ_PM'		=> {
 				'Net::Pcap'   => 0.04,
 				'NetPacket'   => 0.03,
 				'Net::Traceroute' => 1.05,

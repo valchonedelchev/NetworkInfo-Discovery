@@ -15,6 +15,8 @@ NetworkInfo::Discovery::Detect - Super Class for all detection modules
 =head1 DESCRIPTION
 
 NetworkInfo::Discovery::Detect is set up to be the super class of all the detection modules.
+It sets up the methods for setting and getting the discovered information about interfaces, gateways, and subnets.
+
 
 =head1 METHODS
 
@@ -22,7 +24,7 @@ NetworkInfo::Discovery::Detect is set up to be the super class of all the detect
 
 =item new 
 
-just set up our hostlist and hoplist
+just set up lists for holding interfaces, subnets, and gateways
 
 =cut
 
@@ -37,8 +39,9 @@ sub new {
     bless ($self, $class);
 
     #set defaults
-    $self->{'hostlist'} = [];
-    $self->{'hoplist'} = [];
+    $self->{'interfacelist'} = [];
+    $self->{'gwlist'} = [];
+    $self->{'subnetlist'} = [];
 
     # for all args, see if we can autoload them
     foreach my $attr (keys %args) {
@@ -57,7 +60,7 @@ sub new {
 =item do_it
 
 this needs to be implemented in the subclass.  
-it should do what ever it does to detect hosts, adding them and hops to $self->{'hostlist'} and to $self->{'hoplist'}.
+it should do what ever it does to detect interfaces, gateways, or subnets adding them to our lists by using the add_* methods below.
 
 =cut
 
@@ -67,69 +70,65 @@ sub do_it {
 
 =pod
 
-=item get_hosts
+=item get_interfaces
 
-returns the host list. 
-each host in the list is a NetworkInfo::Discovery::Host object.
+=item get_gateways
+
+=item get_subnets
+
+returns a list of hash references for interfaces, gateways, or subnets.
 
 =cut
 
-sub get_hosts {
+sub get_interfaces {
     my $self = shift;
 
-    return @{$self->{'hostlist'}};
+    return @{$self->{'interfacelist'}};
+}
+sub get_gateways {
+    my $self = shift;
+
+    return @{$self->{'gwlist'}};
+}
+sub get_subnets {
+    my $self = shift;
+
+    return @{$self->{'subnetlist'}};
 }
 
 =pod
 
-=item get_hops 
+=item add_interface ($hashref)
 
-returns the hop list.  a hop is a reference to an array
-like [$host1, $host2, $latency, $bandwidth].  $host1 and $host2 are
-actual C<Host> objects. $latency and $bandwidth are just that between the
-hosts, and are optional.
+=item add_gateway ($hashref)
 
-=cut
+=item add_subnet ($hashref)
 
-sub get_hops {
-    my $self = shift;
-
-    return @{$self->{'hoplist'}};
-}
-
-=pod
-
-=item add_host ($host)
-
-adds $host to the host list.
+adds the hash ref to the list of interfaces, gateways, or subnets.
 
 =cut
 
-sub add_host {
+sub add_interface {
     my $self = shift;
 
     while (@_) {
-	push (@{$self->{'hostlist'}}, shift);
+	push (@{$self->{'interfacelist'}}, shift);
     }
 }
 
-=pod
-
-=item add_hop ($hop)
-
-adds $hop to the hoplist.
-a hop is a reference to an array
-like [$host1, $host2, $latency, $bandwidth].  $host1 and $host2 are
-actual C<Host> objects. $latency and $bandwidth are just that between the
-hosts, and are optional.
-
-=cut
-
-sub add_hop {
+sub add_gateway {
     my $self = shift;
 
     while (@_) {
-	push (@{$self->{'hoplist'}}, shift);
+	push (@{$self->{'gwlist'}}, shift);
+    }
+}
+
+sub add_subnet {
+    my $self = shift;
+
+    while (@_) {
+	push (@{$self->{'subnetlist'}}, shift);
     }
 }
 
@@ -140,8 +139,6 @@ sub add_hop {
 Tom Scanlan <tscanlan@they.gotdns.org>
 
 =head1 SEE ALSO
-
-L<NetworkInfo::Discovery::Host>
 
 L<NetworkInfo::Discovery::Sniff>
 

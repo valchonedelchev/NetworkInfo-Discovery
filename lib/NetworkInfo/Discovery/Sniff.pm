@@ -46,7 +46,7 @@ sub do_it {
     $self->capture;
     $self->process_ip_packets;
 
-    return $self->get_hosts;
+    return $self->get_interfaces;
 }
 
 sub capture {
@@ -58,6 +58,9 @@ sub capture {
 
     Net::Pcap::lookupnet($self->device, \$self->{'address'}, \$self->{'netmask'}, \$self->{'error'})
 	&&  die 'Unable to look up device information for ', $self->device, ' - ', $self->error;
+
+    $self->realmask(join('.',unpack("C4",pack("N",$self->netmask))) );
+    $self->realip(join('.',unpack("C4",pack("N",$self->address))) );
 
     $self->{'object'} = Net::Pcap::open_live(
 		    $self->device, 
@@ -100,22 +103,41 @@ sub process_ip_packets {
 	    my $arp_data = NetPacket::ARP->decode($ether_data);
 
 	    if ($arp_data->{opcode} == ARP_OPCODE_REQUEST) {
-		my $shost = new NetworkInfo::Discovery::Host (ipaddress => hex2ip($arp_data->{spa}),
-						      does_ethernet => "yes",
-						      does_arp => "yes",
-						      mac => hex2mac($arp_data->{sha}) );
-		$self->add_host($shost);
+#		my $shost = new NetworkInfo::Discovery::Host (ipaddress => hex2ip($arp_data->{spa}),
+#						      does_ethernet => "yes",
+#						      does_arp => "yes",
+#						      mac => hex2mac($arp_data->{sha}) );
+#		$self->add_host($shost);
+		$self->add_interface(
+		    {
+		    ip=> hex2ip($arp_data->{spa}),
+		    mac => hex2mac($arp_data->{sha}) ,
+		    mask=> $self->realmask,
+		    }
+		);
 
 	    } elsif ($arp_data->{opcode} == ARP_OPCODE_REPLY) {
-		my $shost = new NetworkInfo::Discovery::Host (ipaddress => hex2ip($arp_data->{spa}),
-						      does_ethernet => "yes",
-						      does_arp => "yes",
-						      mac	=> hex2mac($arp_data->{sha}) );
-		my $dhost = new NetworkInfo::Discovery::Host (ipaddress => hex2ip($arp_data->{tpa}),
-						      does_ethernet => "yes",
-						      does_arp => "yes",
-						      mac	=> hex2mac($arp_data->{tha}) );
-		$self->add_host($shost,$dhost);
+#		my $shost = new NetworkInfo::Discovery::Host (ipaddress => hex2ip($arp_data->{spa}),
+#						      does_ethernet => "yes",
+#						      does_arp => "yes",
+#						      mac	=> hex2mac($arp_data->{sha}) );
+#		my $dhost = new NetworkInfo::Discovery::Host (ipaddress => hex2ip($arp_data->{tpa}),
+#						      does_ethernet => "yes",
+#						      does_arp => "yes",
+#						      mac	=> hex2mac($arp_data->{tha}) );
+#		$self->add_host($shost,$dhost);
+		$self->add_interface(
+		    {
+			ip=> hex2ip($arp_data->{spa}), 
+			mac=> hex2mac($arp_data->{sha}),
+			mask=> $self->realmask,
+		    } ,
+		    { 
+			ip=> hex2ip($arp_data->{tpa}),
+			mac => hex2mac($arp_data->{tha}),
+			mask=> $self->realmask,
+		    } 
+		);
 
 	    } elsif ($arp_data->{opcode} == RARP_OPCODE_REQUEST) {
 		print "got RARP_OPCODE_REQUEST\n";
@@ -135,14 +157,27 @@ sub process_ip_packets {
 		push @$sports, $tcp->{'src_port'};
 		push @{$dports}, $tcp->{'dest_port'};
 
-		my $shost = new NetworkInfo::Discovery::Host (ipaddress => "$ip->{'src_ip'}",
-						      does_ethernet => "yes",
-								does_tcp=> "yes");
-		my $dhost = new NetworkInfo::Discovery::Host (ipaddress => "$ip->{'dest_ip'}",
-						      does_ethernet => "yes",
-								does_tcp=> "yes");
+#		my $shost = new NetworkInfo::Discovery::Host (ipaddress => "$ip->{'src_ip'}",
+#						      does_ethernet => "yes",
+#								does_tcp=> "yes");
+#		my $dhost = new NetworkInfo::Discovery::Host (ipaddress => "$ip->{'dest_ip'}",
+#						      does_ethernet => "yes",
+#								does_tcp=> "yes");
+#
+#		$self->add_host($shost,$dhost);
+#
 
-		$self->add_host($shost,$dhost);
+
+		$self->add_interface(
+		    {
+			ip=>"$ip->{'src_ip'}",
+			mask=>( ($self->matches_subnet($ip->{'src_ip'})) ? $self->realmask : ""),
+		    },
+		    {
+			ip=>"$ip->{'dest_ip'}",
+			mask=>( ($self->matches_subnet($ip->{'dest_ip'})) ? $self->realmask : ""),
+		    }
+		);
 
             } elsif ($ip->{"proto"}  == 17 ) {
 	       # UDP Stuff
@@ -152,14 +187,24 @@ sub process_ip_packets {
 	       push @$sports, $udp->{'src_port'};
 	       push @{$dports}, $udp->{'dest_port'};
 
-		my $shost = new NetworkInfo::Discovery::Host (ipaddress => "$ip->{'src_ip'}",
-						      does_ethernet => "yes",
-								does_udp=> "yes");
-		my $dhost = new NetworkInfo::Discovery::Host (ipaddress => "$ip->{'dest_ip'}",
-						      does_ethernet => "yes",
-								does_udp=> "yes");
-
-		$self->add_host($shost,$dhost);
+#		my $shost = new NetworkInfo::Discovery::Host (ipaddress => "$ip->{'src_ip'}",
+#						      does_ethernet => "yes",
+#								does_udp=> "yes");
+#		my $dhost = new NetworkInfo::Discovery::Host (ipaddress => "$ip->{'dest_ip'}",
+#						      does_ethernet => "yes",
+#								does_udp=> "yes");
+#
+#		$self->add_host($shost,$dhost);
+		$self->add_interface(
+		    {
+			ip=>$ip->{'src_ip'},
+			mask=>( ($self->matches_subnet($ip->{'src_ip'})) ? $self->realmask : ""),
+		    },
+		    {
+			ip=>$ip->{'dest_ip'},
+			mask=>( ($self->matches_subnet($ip->{'dest_ip'})) ? $self->realmask : ""),
+		    },
+		);
     
             } elsif ($ip->{"proto"}  == 1 ) {
 		# ICMP stuff here
@@ -198,15 +243,25 @@ sub process_ip_packets {
 		    $type = "ICMP_MASKREPLY";
 		}
     
-		my $shost = new NetworkInfo::Discovery::Host (ipaddress => "$ip->{'src_ip'}",
-						      does_ethernet => "yes",
-								does_icmp=>"yes");
-		my $dhost = new NetworkInfo::Discovery::Host (ipaddress => "$ip->{'dest_ip'}",
-						      does_ethernet => "yes",
-								does_icmp=>"yes");
-
-		$self->add_host($shost,$dhost);
-            }
+#		my $shost = new NetworkInfo::Discovery::Host (ipaddress => "$ip->{'src_ip'}",
+#						      does_ethernet => "yes",
+#								does_icmp=>"yes");
+#		my $dhost = new NetworkInfo::Discovery::Host (ipaddress => "$ip->{'dest_ip'}",
+#						      does_ethernet => "yes",
+#								does_icmp=>"yes");
+#
+#		$self->add_host($shost,$dhost);
+		$self->add_interface(
+		    {
+			ip=>$ip->{'src_ip'},
+			mask=>( ($self->matches_subnet($ip->{'src_ip'})) ? $self->realmask : ""),
+		    },
+		    {
+			ip=>$ip->{'dest_ip'},
+			mask=>( ($self->matches_subnet($ip->{'dest_ip'})) ? $self->realmask : ""),
+		    },
+		);
+	    }
     
         } else {
 	    print("Unknown Ethernet Type: $ether_obj->{src_mac}:$ether_obj->{dest_mac} $ether_obj->{type}\n");
@@ -264,6 +319,47 @@ sub promisc {
     my $self = shift;
     $self->{'promisc'} = shift if (@_);
     return $self->{'promisc'};
+}
+sub realip {
+    my $self = shift;
+    $self->{'realip'} = shift if (@_);
+    return $self->{'realip'};
+}
+sub realmask {
+    my $self = shift;
+    $self->{'realmask'} = shift if (@_);
+    return $self->{'realmask'};
+}
+
+
+sub matches_subnet {
+    my $self= shift;
+    my $ip = shift;
+
+    my $bits;
+
+    # get our ip in machine representation
+    my $mainIP = unpack("N", pack("C4", split(/\./, $ip)));
+
+    if ($self->realmask =~ m!^\d+\.\d+\.\d+\.\d+!) {
+	my $mask_bits=unpack("B32", pack("C4", split(/\./, $self->realmask)));
+	$bits=length( (split(/0/,$mask_bits,2))[0] );	
+    }
+    # what is left over from the mask
+    $bits = 32 - ($bits || 32);
+
+    # put this acl into machine representation
+    my $otherIP = unpack("N", pack("C4", split(/\./, $self->realip)));
+
+    # keep only the important parts of the ip address/mask pair
+    my $maskedIP = $otherIP >> $bits;
+
+    # return true if this one matches
+    return 1 if  ($maskedIP == ($mainIP >> $bits));
+
+    # return false if we didn't match any acl
+    return 0;
+
 }
 
 sub hex2mac {

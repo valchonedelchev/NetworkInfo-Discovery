@@ -38,27 +38,32 @@ sub do_it {
 	my $lastip = $tr->hop_query_host($hop - 1 ,0) if ($hop > 1);
 	my $ip = $tr->hop_query_host($hop,0);
 
-	my $lasthost = new NetworkInfo::Discovery::Host (ipaddress => $lastip ) if ($lastip);
-	my $host = new NetworkInfo::Discovery::Host (ipaddress => $ip ) if ($ip);
+#	my $lasthost = new NetworkInfo::Discovery::Host (ipaddress => $lastip ) if ($lastip);
+#	my $host = new NetworkInfo::Discovery::Host (ipaddress => $ip ) if ($ip);
 
-	my $avglatency;
+	$self->add_interface({ ip=>$lastip }) if $lastip;
+	$self->add_interface({ ip=>$ip }) if $ip;
+	$self->add_gateway({ ip=>$lastip }) if $lastip;
+	$self->add_gateway({ ip=>$ip }) if $ip;
 
-        for (my $query=1; $query <= $tr->hop_queries($hop); $query++) {
-	    $avglatency +=  $tr->hop_query_time($hop, $query);
-        }
-
-	$avglatency = $avglatency / $tr->hop_queries($hop);
-	
-	if (defined $host && $host) {
-	    $self->add_host( $host );
-	    
-	    if (defined $lasthost && $lasthost) {
-		$self->add_hop( [$host,$lasthost,$avglatency] );
-	    }
-	}
+#	my $avglatency;
+#
+#        for (my $query=1; $query <= $tr->hop_queries($hop); $query++) {
+#	    $avglatency +=  $tr->hop_query_time($hop, $query);
+#        }
+#
+#	$avglatency = $avglatency / $tr->hop_queries($hop);
+#	
+#	if (defined $host && $host) {
+#	    $self->add_host( $host );
+#	    
+#	    if (defined $lasthost && $lasthost) {
+#		$self->add_hop( [$host,$lasthost,$avglatency] );
+#	    }
+#	}
    }
 
-    return $self->get_hosts;
+    return $self->get_interfaces;
 }
 
 sub max_ttl {
