@@ -10,7 +10,7 @@ example/sample.pl
 example/loop.pl
 Makefile.PL
 MANIFEST
-README.txt
+README
 TODO
 test.pl
 Graph-Tk/TkGraph.pm

@@ -5,7 +5,7 @@ use warnings;
 use vars qw($VERSION);
 use NetworkInfo::Discovery::Register;
 
-$VERSION = '0.10';
+$VERSION = '0.11';
 
 =head1 NAME
 
