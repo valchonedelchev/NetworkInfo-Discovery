@@ -4,7 +4,9 @@ lib/NetworkInfo/Discovery/Host.pm
 lib/NetworkInfo/Discovery/Sniff.pm
 lib/NetworkInfo/Discovery/Traceroute.pm
 lib/NetworkInfo/Discovery/Detect.pm
+example/sample_acl.pl
 example/sample.pl
+example/loop.pl
 Makefile.PL
 MANIFEST
 README

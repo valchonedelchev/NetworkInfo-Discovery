@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use vars qw($VERSION);
 
-$VERSION = '0.05';
+$VERSION = '0.07';
 
 =head1 NAME
 
@@ -20,7 +20,7 @@ NetworkInfo::Discovery - Modules for network discovery and mapping
 
   use NetworkInfo::Discovery::Host;
 
-  my $host = new NetworkInfo::Discovery::Host('interface'=> '192.168.1.3',
+  my $host = new NetworkInfo::Discovery::Host('ipaddress'=> '192.168.1.3',
 				      'mac'=> '11:11:11:11:11:11',
 				      'dnsname' => 'someotherhost' ) 
 		    || warn ("failed to make host");
@@ -73,6 +73,8 @@ use NetworkInfo::Discovery::Sniff;
 use Graph::Undirected;
 use Graph::Reader::XML;
 use Graph::Writer::XML;
+use POSIX;
+use Socket;
 
 =pod
 
@@ -108,6 +110,18 @@ sub new {
 	$self->{'network'} =  new Graph::Undirected ;
     }
 
+    # figure out who we are...
+    my ($kernel, $hostname, $release, $version, $hardware) = POSIX::uname();
+    my $ipaddress  = gethostbyname($hostname) or die "Couldn't resolve $hostname : $!";
+    $hostname = gethostbyaddr($ipaddress, AF_INET) || $hostname ;
+    $ipaddress = inet_ntoa($ipaddress);
+    my $localhost = new NetworkInfo::Discovery::Host('ipaddress'=> $ipaddress,
+				    'os_type' => "$kernel $release",
+				    'dnsname' => $hostname,
+				    'is_discovery_host' => "yes",
+				    ) || warn ("failed to find our self.");
+    $self->add_host($localhost);
+    
     return $self;
 }
 
@@ -386,6 +400,197 @@ sub autosave {
     my $self = shift;
     $self->{'autosave'} = shift if (@_) ;
     return $self->{'autosave'};
+}
+
+=pod
+
+=item test_acl ($ip_to_test)
+
+$ip_to_test is the ip addresse you want to check against the acl list set using add_acl.
+it should be in the form "a.b.c.d".
+we return as soon as we find a matching rule that says allow or deny.
+we return 1 to accept it, 0 to deny it.
+
+=cut
+#sub test_acl {
+#    my ($self, $ip) = @_;
+#
+#    # this is just for kicks... lets up pass in a host obj
+#    if (ref($ip) =~ m/^NetworkInfo::Discovery::Host/) {
+#	$ip = $ip->ipaddress;
+#    }
+#    # check it against each acl and try to buffer calls to the matcher
+#    my $lastAorD = "allow";
+#    my @buffered_ips;
+#
+#    print "checking acls against $ip\n";
+#    foreach (@{$self->{'_acls'}}) {
+#	print "____:$_\n";
+#	
+#	m!^(allow|deny):(.*)!;
+#
+#	# if this is the same type that we saw last time, 
+#	if ($lastAorD eq $1) {
+#	    # save it and keep going
+#	    push(@buffered_ips, $2);
+#	    next;
+#	}
+#
+#	# otherwise, this is a change so
+#	# check what we have buffered
+#	if (@buffered_ips) {
+#	    #we are supposed to allow these...
+#	    if ($lastAorD eq "allow") {
+#		# return 1 to if we found an allow
+#		print "calling return 1 if ($self->acl_match($ip, @buffered_ips))\n";
+#		return 1 if ($self->acl_match($ip, @buffered_ips));
+#
+#	    #we are supposed to deny these...
+#	    } else {
+#		# return 0 to if we found a deny match
+#		print "calling return 0 if ($self->acl_match($ip, @buffered_ips))\n";
+#		return 0 if ($self->acl_match($ip, @buffered_ips));
+#	    }
+#	
+#	    # we are done with the buffer, clen it out
+#	    @buffered_ips=();
+#	}
+#
+#
+#	# save what we have now
+#	push(@buffered_ips, $2);
+#	# don't forget where we've been
+#	$lastAorD = $1;
+#
+#	#thanks. may i have another?
+#    }
+#}
+
+sub test_acl {
+    my ($self, $ip) = @_;
+
+    # this is just for kicks... lets up pass in a host obj
+    if (ref($ip) =~ m/^NetworkInfo::Discovery::Host/) {
+	$ip = $ip->ipaddress;
+    }
+
+#    print "checking acls against $ip\n";
+    foreach (@{$self->{'_acls'}}) {
+#	print "____:$_\n";
+	m!^(allow|deny):(.*)!;
+
+	#we are supposed to allow these...
+	if ($1 eq "allow") {
+	    # return 1 to if we found an allow
+#	    print "calling return 1 if ($self->acl_match($ip, $2))\n";
+	    return 1 if ($self->acl_match($ip, $2));
+
+	#we are supposed to deny these...
+	} else {
+	    # return 0 to if we found a deny match
+#	    print "calling return 0 if ($self->acl_match($ip, $2))\n";
+	    return 0 if ($self->acl_match($ip, $2));
+	}
+    }
+    #if we passed all of the above, we must not have an acl for this ip
+    return 1;
+}
+
+=pod
+
+=item acl_match ($ip_to_test, @against_these)
+
+ip is like 172.16.20.4
+the acls are either in CIDR notation "172.16.4.12/25" or a single address
+returns true if the ip matches the acl.
+returns false otherwise
+
+=cut
+sub acl_match {
+    my ($self, $ip, @others) = @_;
+
+    # get our ip in machine representation
+    my $mainIP = unpack("N", pack("C4", split(/\./, $ip)));
+
+    # for all the acls
+    foreach (@others) {
+	# split off the CIDR mask if there is one
+	m!^(\d+\.\d+\.\d+\.\d+)(?:/(\d+))?!g;
+
+	# 0.0.0.0/0 matches all
+	if (($1 eq "0.0.0.0") and ($2 eq 0)) {
+	    return 1;
+	}
+
+	# what is left over from the mask
+	my $bits = 32 - ($2 || 32);
+
+	# put this acl into machine representation
+	my $otherIP = unpack("N", pack("C4", split(/\./, $1)));
+
+	# keep only the important parts of the ip address/mask pair
+	my $maskedIP = $otherIP >> $bits;
+
+	# if there was a CIDR mask
+	if ($bits) {
+	    # return true if this one matches
+#print "bits->$bits, maskedIP->$maskedIP, mainIP->" . ($mainIP>>$bits) . "\n";
+	    return 1 if  ($maskedIP == ($mainIP >> $bits));
+
+	} else {
+	    # return true if this one matches (without mask)
+print "bits->$bits, maskedIP->$maskedIP, mainIP->$mainIP\n";
+	    return 1 if ($maskedIP == $mainIP);
+	}
+    } 
+
+    # return false if we didn't match any acl
+    return 0;
+}
+
+=pod
+
+=item add_acl ("(allow|deny)", @acls)
+
+this function sets a list of hosts/networks that we are allowed to discover.
+note that order matters.
+the first argument is set to allow or deny.  the meaning should be clear.
+@acls is a list of ip addresses in the form:
+    a.b.c.d/mask	# to acl a whole network
+    or 
+    a.b.c.d		# to acl a host
+the following calls will allow us to discover stuff on only the network 172.16.1.0/24:
+    $d->add_acl("allow", "172.16.1.0/24");
+    $d->add_acl("deny", "0.0.0.0/0");
+the following calls will allow us to discover anything but stuff on network 172.16.1.0/24:
+    $d->add_acl("deny", "172.16.1.0/24");
+    $d->add_acl("allow", "0.0.0.0/0");
+
+=cut
+sub add_acl {
+    my ($self,$AorD, @acls) = @_;
+
+    # only accept this if we have valid allow or deny rules.
+    return undef unless ($AorD =~ m/(allow|deny)/);
+
+    foreach my $a (@acls) {
+	# only accept this if we have addresses like "a.b.c.d" or "a.b.c.d/n"
+	return undef unless($a =~ m!^\d+\.\d+\.\d+\.\d+(?:/\d+)?!);
+
+	push (@{$self->{"_acls"}}, "$AorD:$a");
+    }
+    return 1;
+}
+=pod
+
+=item clear_acl 
+
+this function clears the acl list
+
+=cut
+sub clear_acl {
+    my $self = shift;
+    @{$self->{"_acls"}} = [];
 }
 
 =pod

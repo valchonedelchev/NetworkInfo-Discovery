@@ -21,11 +21,13 @@ sub new {
     my $self       = $classname->SUPER::new(@_);
     my %args = @_;
 
+    # set defaults
     $self->timeout(60);
     $self->maxcapture(10);
     $self->snaplen(1500);
     $self->promisc(1);
     
+    # use user settings that were passed in.
     # for all args, see if we can autoload them
     foreach my $attr (keys %args) {
 	if ($self->can($attr) ) {
@@ -37,6 +39,15 @@ sub new {
 
     return $self;
 } 
+
+sub do_it {
+    my $self = shift;
+    
+    $self->capture;
+    $self->process_ip_packets;
+
+    return $self->get_hosts;
+}
 
 sub capture {
     my $self = shift;
@@ -89,16 +100,22 @@ sub process_ip_packets {
 	    my $arp_data = NetPacket::ARP->decode($ether_data);
 
 	    if ($arp_data->{opcode} == ARP_OPCODE_REQUEST) {
-		my $shost = new NetworkInfo::Discovery::Host (interface => hex2ip($arp_data->{spa}),
+		my $shost = new NetworkInfo::Discovery::Host (ipaddress => hex2ip($arp_data->{spa}),
+						      does_ethernet => "yes",
+						      does_arp => "yes",
 						      mac => hex2mac($arp_data->{sha}) );
-		push(@{$self->{'hostlist'}}, $shost);
+		$self->add_host($shost);
 
 	    } elsif ($arp_data->{opcode} == ARP_OPCODE_REPLY) {
-		my $shost = new NetworkInfo::Discovery::Host (interface => hex2ip($arp_data->{spa}),
+		my $shost = new NetworkInfo::Discovery::Host (ipaddress => hex2ip($arp_data->{spa}),
+						      does_ethernet => "yes",
+						      does_arp => "yes",
 						      mac	=> hex2mac($arp_data->{sha}) );
-		my $dhost = new NetworkInfo::Discovery::Host (interface => hex2ip($arp_data->{tpa}),
+		my $dhost = new NetworkInfo::Discovery::Host (ipaddress => hex2ip($arp_data->{tpa}),
+						      does_ethernet => "yes",
+						      does_arp => "yes",
 						      mac	=> hex2mac($arp_data->{tha}) );
-		push(@{$self->{'hostlist'}}, $shost, $dhost);
+		$self->add_host($shost,$dhost);
 
 	    } elsif ($arp_data->{opcode} == RARP_OPCODE_REQUEST) {
 		print "got RARP_OPCODE_REQUEST\n";
@@ -118,10 +135,14 @@ sub process_ip_packets {
 		push @$sports, $tcp->{'src_port'};
 		push @{$dports}, $tcp->{'dest_port'};
 
-		my $shost = new NetworkInfo::Discovery::Host (interface => "$ip->{'src_ip'}");
-		my $dhost = new NetworkInfo::Discovery::Host (interface => "$ip->{'dest_ip'}");
+		my $shost = new NetworkInfo::Discovery::Host (ipaddress => "$ip->{'src_ip'}",
+						      does_ethernet => "yes",
+								does_tcp=> "yes");
+		my $dhost = new NetworkInfo::Discovery::Host (ipaddress => "$ip->{'dest_ip'}",
+						      does_ethernet => "yes",
+								does_tcp=> "yes");
 
-		push(@{$self->{'hostlist'}}, $shost, $dhost);
+		$self->add_host($shost,$dhost);
 
             } elsif ($ip->{"proto"}  == 17 ) {
 	       # UDP Stuff
@@ -131,10 +152,14 @@ sub process_ip_packets {
 	       push @$sports, $udp->{'src_port'};
 	       push @{$dports}, $udp->{'dest_port'};
 
-		my $shost = new NetworkInfo::Discovery::Host (interface => "$ip->{'src_ip'}");
-		my $dhost = new NetworkInfo::Discovery::Host (interface => "$ip->{'dest_ip'}");
+		my $shost = new NetworkInfo::Discovery::Host (ipaddress => "$ip->{'src_ip'}",
+						      does_ethernet => "yes",
+								does_udp=> "yes");
+		my $dhost = new NetworkInfo::Discovery::Host (ipaddress => "$ip->{'dest_ip'}",
+						      does_ethernet => "yes",
+								does_udp=> "yes");
 
-		push(@{$self->{'hostlist'}}, $shost, $dhost);
+		$self->add_host($shost,$dhost);
     
             } elsif ($ip->{"proto"}  == 1 ) {
 		# ICMP stuff here
@@ -173,10 +198,14 @@ sub process_ip_packets {
 		    $type = "ICMP_MASKREPLY";
 		}
     
-		my $shost = new NetworkInfo::Discovery::Host (interface => "$ip->{'src_ip'}");
-		my $dhost = new NetworkInfo::Discovery::Host (interface => "$ip->{'dest_ip'}");
+		my $shost = new NetworkInfo::Discovery::Host (ipaddress => "$ip->{'src_ip'}",
+						      does_ethernet => "yes",
+								does_icmp=>"yes");
+		my $dhost = new NetworkInfo::Discovery::Host (ipaddress => "$ip->{'dest_ip'}",
+						      does_ethernet => "yes",
+								does_icmp=>"yes");
 
-		push(@{$self->{'hostlist'}}, $shost, $dhost);
+		$self->add_host($shost,$dhost);
             }
     
         } else {
@@ -184,7 +213,6 @@ sub process_ip_packets {
     
         }
     }
-    return @{$self->{'hostlist'}};
 }
 
 sub filter {

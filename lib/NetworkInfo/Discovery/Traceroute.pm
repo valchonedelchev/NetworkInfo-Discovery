@@ -13,7 +13,16 @@ sub new {
     my $classname  = shift;
     my $self       = $classname->SUPER::new(@_);
 
-    $self->{'tr'} = Net::Traceroute->new(host=> $self->host, queries => 3, query_timeout => 2, max_ttl => $self->max_ttl);
+
+    return $self;                   # And give it back
+} 
+
+sub do_it {
+    my $self = shift;
+    
+    $self->{'tr'} = Net::Traceroute->new(
+	host=> $self->host, queries => 3, query_timeout => 2, max_ttl => $self->max_ttl
+    );
 
     my $tr = $self->{'tr'};
 
@@ -22,8 +31,8 @@ sub new {
 	my $lastip = $tr->hop_query_host($hop - 1 ,0) if ($hop > 1);
 	my $ip = $tr->hop_query_host($hop,0);
 
-	my $lasthost = new NetworkInfo::Discovery::Host (interface => $lastip ) if ($lastip);
-	my $host = new NetworkInfo::Discovery::Host (interface => $ip ) if ($ip);
+	my $lasthost = new NetworkInfo::Discovery::Host (ipaddress => $lastip ) if ($lastip);
+	my $host = new NetworkInfo::Discovery::Host (ipaddress => $ip ) if ($ip);
 
 	my $avglatency;
 
@@ -33,16 +42,17 @@ sub new {
 
 	$avglatency = $avglatency / $tr->hop_queries($hop);
 	
-	push (@{$self->{'hostlist'}}, $host ) if (defined $host && $host);
-	if (defined $host && defined $lasthost && $host && $lasthost) {
-	    my $aref = [$host,$lasthost,$avglatency] ;
-	    push (@{$self->{'hoplist'}}, $aref );
+	if (defined $host && $host) {
+	    $self->add_host( $host );
+	    
+	    if (defined $lasthost && $lasthost) {
+		$self->add_hop( [$host,$lasthost,$avglatency] );
+	    }
 	}
    }
 
-    return $self;                   # And give it back
-} 
-
+    return $self->get_hosts;
+}
 
 sub max_ttl {
     my $self = shift;

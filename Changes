@@ -1,4 +1,19 @@
-Revision history for Perl extension NetworkInfo::Discovery.
+Revision history for NetworkInfo::Discovery and related modules:
+----------------------------------------------------------------
+
+0.07  Wed Jan  8 23:28:42 EST 2003
+    - Finished off the first attempt at acls.  look at the test.pl or example/sample.pl for examples.
+
+0.06  Tue Jan  7 15:20:14 EST 2003
+    - added "do_it", "add_host", "add_hop", "get_hosts", "get_hops" functions to "Detect.pm".
+    - Updated to reflect this: Sniff.pm, Traceroute.pm, and the test scripts.
+
+      Mon Jan  6 17:58:43 EST 2003
+    - added the acl_match function.  hope to add acl entries soon, then I can stop mapping the whole internet.
+
+      Thu Jan  2 19:07:35 EST 2003
+    - Added a few more bits of info to Host.
+    - The Discovery server is now marked so so that we can find it easily later. 
 
 0.05  Mon Dec 30 10:33:49 EST 2002
     - Modules renamed as NetworkInfo:: for CPAN
