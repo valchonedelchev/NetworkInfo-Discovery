@@ -1,3 +1,11 @@
+*   make good test cases for test.pl on users networks.
+
+*   Make sure to get hostname lookups in soon.
+
+*   Use requires instead of "use" to help with memory footprint.
+
+*   Run podchecker every now and then.
+
 *   Add more info into the Host objects.  An example from pkent (email
     withheld until he releases it):
 
@@ -28,13 +36,12 @@
     it is IPADDR+MACADD or just IPADDR if we can't find the MAC.  Two
     networks with the same address scheme will over write each other.
 
-*   Add ACLs so that we don't monitor OPN (other people's networks).
-
 *   Keep a history of the network state.  Add ability to warn of hosts
     that have been added or removed from the network.  Warn about new
     routes within our network.  Warn of extreme conditions (latency,
     bandwidth).
-    Perhaps integreate with Mon (http://www.kernel.org/software/mon/).
+
+*   Perhaps integreate with Mon (http://www.kernel.org/software/mon/).
 
 *   Make a network protocol for this set of modules so that we can make
     agents that sit on remote boxes.  These agents would pass data back
@@ -46,6 +53,7 @@
     from the main instance.
 
 *   Add more Detection modules:
+	host/port scanner
 	BroadcastPing
 	SNMP
 	BGP
@@ -63,3 +71,5 @@
     *	see bandwidth usage across routers if we cna get the data
     *	do other things that I haven't thought of
 
+#done in v0.07
+*   Add ACLs so that we don't monitor OPN (other people's networks).

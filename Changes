@@ -1,6 +1,18 @@
 Revision history for NetworkInfo::Discovery and related modules:
 ----------------------------------------------------------------
 
+0.08  Wed Jan 15 13:04:28 EST 2003
+    - Added Scan.pm.  This can be used to scanl ranges of ipaddresses for
+      open tcp or udp ports.
+    - Added tests to test Scan.
+    - Changed the way Discovery->add_host works.  Now tries to log a 
+      changed attribute.
+    - Added changed Host attribute "open_ports" to be "tcp_open_ports" or
+      "udp_open_ports".  Also fixed them so that they can accept a string
+      to get around reading in the host from a file.
+    - Added pod to Scan.pm
+    - Ran podchecker on Discovery.pm, Host.pm, Scan.pm, and Detect.pm.
+
 0.07  Wed Jan  8 23:28:42 EST 2003
     - Finished off the first attempt at acls.  look at the test.pl or example/sample.pl for examples.
 

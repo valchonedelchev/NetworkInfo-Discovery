@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use vars qw($VERSION);
 
-$VERSION = '0.07';
+$VERSION = '0.08';
 
 =head1 NAME
 
@@ -27,7 +27,6 @@ NetworkInfo::Discovery - Modules for network discovery and mapping
 
   $d->add_host($host) || warn "failed to add new host";
 
-  
   use NetworkInfo::Discovery::Sniff;
 
   my $s = new NetworkInfo::Discovery::Sniff;
@@ -77,6 +76,8 @@ use POSIX;
 use Socket;
 
 =pod
+
+=over 4
 
 =item new 
 
@@ -139,6 +140,7 @@ may take a long time if you have a large network.
 in a scalar context, we return the first match.
 
 =cut
+
 sub find_host {
     my $self = shift;
     my $host = shift;
@@ -183,6 +185,7 @@ makes an C<Host> object out of a graph node.  $id is the id number of the node.
 returns undef if there is no matching node, returns the C<Host> otherwise.
 
 =cut
+
 sub get_host {
     my $self = shift;
     my $id   = shift;
@@ -206,17 +209,37 @@ sub get_host {
 adds a single C<Host> object into the graph.
 
 =cut
+
 sub add_host {
     my $self = shift;
-    my $host = shift;
+    my $newhost = shift;
 
-    my $id = $host->id();
-    my $retval = $self->{'network'}->add_vertex($id);
+    my $id = $newhost->id();
+    my %newattr = $newhost->get_attributes;
 
-    my %attr = $host->get_attributes;
-    
-    foreach my $k (keys %attr) {
-	$self->{'network'}->set_attribute($k, $id, $attr{$k});
+    my $retval;
+
+    # if the host already exists, update it...
+    #   -- future: set a log message about the change
+    if ($self->{'network'}->has_vertex($id)) {
+	my %oldattr = $self->network->get_attributes($id);
+	my $host = new NetworkInfo::Discovery::Host(%oldattr);
+
+	foreach my $k (keys %newattr) {
+	    if (exists $oldattr{$k} and $oldattr{$k} ne $newattr{$k}) {
+		#send a log message
+		warn ("host $id changed attribute $k from $oldattr{$k} to $newattr{$k}");
+	    }
+
+	    $retval = $self->{'network'}->set_attribute($k, $id, $newattr{$k});
+	}
+
+    } else {
+	$retval = $self->{'network'}->add_vertex($id);
+
+	foreach my $k (keys %newattr) {
+	    $self->{'network'}->set_attribute($k, $id, $newattr{$k});
+	}
     }
 
     return $retval;
@@ -228,6 +251,7 @@ sub add_host {
 adds more than one C<Host> object into the graph.
 
 =cut
+
 sub add_hosts {
     my $self = shift;
     my @hosts = @_;
@@ -244,6 +268,7 @@ sub add_hosts {
 removes a single C<Host> object from the graph.
 
 =cut
+
 sub delete_host {
     my $self = shift;
     my $host = shift;
@@ -265,6 +290,7 @@ actual C<Host> objects. $latency and $bandwidth are just that between the
 hosts, and are optional.
 
 =cut
+
 sub add_hop {
     my $self = shift;
     my $hop  = shift;
@@ -288,6 +314,7 @@ sub add_hop {
 adds a list of hops.  Each list item is an array ref as described in C<add_hop>.
 
 =cut
+
 sub add_hops {
     my $self = shift;
     my @hops = @_;
@@ -304,6 +331,7 @@ sub add_hops {
 prints the xml formated graph to STDOUT
 
 =cut
+
 sub print_graph {
     my $self = shift;
     $self->write_graph( \*STDOUT );
@@ -318,6 +346,7 @@ if $filename is not give., tries to use what was set at creation
 of this object.
 
 =cut
+
 sub read_graph {
     my $self = shift;
     my $file;
@@ -345,6 +374,7 @@ if $filename is not give., tries to use what was set at creation
 of this object.
 
 =cut
+
 sub write_graph {
     my $self = shift;
     my $file;
@@ -369,6 +399,7 @@ sub write_graph {
 get/set the file to store data in
 
 =cut
+
 sub file {
     my $self = shift;
     $self->{'file'} = shift if (@_) ;
@@ -381,6 +412,7 @@ sub file {
 get/set the network graph 
 
 =cut
+
 sub network {
     my $self = shift;
     $self->{'network'} = shift if (@_) ;
@@ -396,6 +428,7 @@ Autosave means that we will try to save the network to our "file" before
 we exit.
 
 =cut
+
 sub autosave {
     my $self = shift;
     $self->{'autosave'} = shift if (@_) ;
@@ -412,6 +445,7 @@ we return as soon as we find a matching rule that says allow or deny.
 we return 1 to accept it, 0 to deny it.
 
 =cut
+
 #sub test_acl {
 #    my ($self, $ip) = @_;
 #
@@ -506,6 +540,7 @@ returns true if the ip matches the acl.
 returns false otherwise
 
 =cut
+
 sub acl_match {
     my ($self, $ip, @others) = @_;
 
@@ -559,14 +594,17 @@ the first argument is set to allow or deny.  the meaning should be clear.
     a.b.c.d/mask	# to acl a whole network
     or 
     a.b.c.d		# to acl a host
+
 the following calls will allow us to discover stuff on only the network 172.16.1.0/24:
     $d->add_acl("allow", "172.16.1.0/24");
     $d->add_acl("deny", "0.0.0.0/0");
+
 the following calls will allow us to discover anything but stuff on network 172.16.1.0/24:
     $d->add_acl("deny", "172.16.1.0/24");
     $d->add_acl("allow", "0.0.0.0/0");
 
 =cut
+
 sub add_acl {
     my ($self,$AorD, @acls) = @_;
 
@@ -588,6 +626,7 @@ sub add_acl {
 this function clears the acl list
 
 =cut
+
 sub clear_acl {
     my $self = shift;
     @{$self->{"_acls"}} = [];
@@ -600,11 +639,13 @@ sub clear_acl {
 just tries to write_graph if we have autosave turned on
 
 =cut
+
 sub DESTROY {
     my $self=shift;
 	$self->write_graph() if ($self->autosave);
 }
 
+=back
 
 =head1 MODULE LAYOUT
 
@@ -629,12 +670,16 @@ holds all known data about a single host.
 These modules should all be a subclass of C<NetworkInfo::Discovery::Detect>.  Currently 
 C<NetworkInfo::Discovery::Sniff> and C<NetworkInfo::Discovery::Traceroute> are the only modules that 
 fit here.  Sniff is a passive monitor that listens to ethernet traffic on the
-local sement to build a list of Hosts.  
+local sement to build a list of Hosts.
 Traceroute is used to map the hosts and hops between the local host and a remote host.
-  
+
+=head1 AVAILABILITY
+
+This module can be found in CPAN at http://www.cpan.org/authors/id/T/TS/TSCANLAN/
+or at http://they.gotdns.org:88/~tscanlan/perl/
 =head1 AUTHOR
 
-Tom Scanlan <tscanlan@openreach.com>
+Tom Scanlan <tscanlan@they.gotdns.org>
 
 =head1 SEE ALSO
 
@@ -649,6 +694,12 @@ L<NetworkInfo::Discovery::Traceroute>
 =head1 BUGS
 
 Please send any bugs to Tom Scanlan <tscanlan@they.gotdns.org>
+
+=head1 COPYRIGHT AND LICENCE
+
+Copyright (c) 2002 Thomas P. Scanlan IV.  All rights reserved.
+This program is free software; you can redistribute it and/or
+modify it under the same terms as Perl itself.
 
 =cut
 

@@ -9,7 +9,7 @@ NetworkInfo::Discovery::Detect - Super Class for all detection modules
 
 =head1 SYNOPSIS
 
-    See NetworkInfo::Discovery::(Sniff|Traceroute)
+    See NetworkInfo::Discovery::(Sniff|Traceroute|Scan)
     for examples.
 
 =head1 DESCRIPTION
@@ -17,6 +17,8 @@ NetworkInfo::Discovery::Detect - Super Class for all detection modules
 NetworkInfo::Discovery::Detect is set up to be the super class of all the detection modules.
 
 =head1 METHODS
+
+=over 4
 
 =item new 
 
@@ -58,6 +60,7 @@ this needs to be implemented in the subclass.
 it should do what ever it does to detect hosts, adding them and hops to $self->{'hostlist'} and to $self->{'hoplist'}.
 
 =cut
+
 sub do_it {
 
 }
@@ -70,6 +73,7 @@ returns the host list.
 each host in the list is a NetworkInfo::Discovery::Host object.
 
 =cut
+
 sub get_hosts {
     my $self = shift;
 
@@ -86,6 +90,7 @@ actual C<Host> objects. $latency and $bandwidth are just that between the
 hosts, and are optional.
 
 =cut
+
 sub get_hops {
     my $self = shift;
 
@@ -99,6 +104,7 @@ sub get_hops {
 adds $host to the host list.
 
 =cut
+
 sub add_host {
     my $self = shift;
 
@@ -118,6 +124,7 @@ actual C<Host> objects. $latency and $bandwidth are just that between the
 hosts, and are optional.
 
 =cut
+
 sub add_hop {
     my $self = shift;
 
@@ -125,6 +132,8 @@ sub add_hop {
 	push (@{$self->{'hoplist'}}, shift);
     }
 }
+
+=back
 
 =head1 AUTHOR
 
@@ -137,6 +146,8 @@ L<NetworkInfo::Discovery::Host>
 L<NetworkInfo::Discovery::Sniff>
 
 L<NetworkInfo::Discovery::Traceroute>
+
+L<NetworkInfo::Discovery::Scan>
 
 =head1 BUGS
 

@@ -28,6 +28,7 @@ my $d = new NetworkInfo::Discovery ('file' => '/tmp/test.xml', 'autosave' => 1) 
 my $host2 = new NetworkInfo::Discovery::Host('ipaddress'=> '192.168.1.3',
 				    'mac'=> '11:11:11:11:11:11',
 				    'dnsname' => 'someotherhost' ) || warn ("failed to make host");
+
 $d->add_host($host2) || warn "failed to add new host";
 
 
@@ -91,3 +92,31 @@ my $h12 = new NetworkInfo::Discovery::Host('ipaddress'=> '10.20.1.99');
 ok($d->test_acl($h12), 1);
 my $h13 = new NetworkInfo::Discovery::Host('ipaddress'=> '208.1.1.9');
 ok($d->test_acl($h13), 0);
+
+
+# Run tests for the Scanner
+use NetworkInfo::Discovery::Scan;
+
+my $scan = new NetworkInfo::Discovery::Scan (
+    hosts=>["localhost", "10.20.1.95"], 
+    ports=>[53,99,1000..1004], 
+    timeout=>1, 
+    'wait'=>0, 
+    protocol => 'udp'
+);
+
+$scan->do_it();
+$d->add_hosts($scan->get_hosts);
+
+foreach my $h ($scan->get_hosts) {
+    print $h->as_string ."\n";
+}
+
+$scan->{protocol} = 'tcp';
+$scan->{ports} = [20..110];
+$scan->do_it();
+$d->add_hosts($scan->get_hosts);
+
+foreach my $h ($scan->get_hosts) {
+    print $h->as_string ."\n";
+}

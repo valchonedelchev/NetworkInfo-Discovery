@@ -24,7 +24,7 @@ know about a host.
 =over 4
 
 =item dnsname
-    
+
 this it the name that DNS knows this host by.
 
 =item ipaddress
@@ -35,23 +35,25 @@ this is the software address of the host (a.k.a its IP address)
 
 this is the hardware Media Access Control address (MAC address) of the host
 
-=item open_ports
+=item (tcp|udp)_open_ports
 
-these are ports that we know this host to be listening on
+these are ports that we know this host to be listening on (for either tcp or udp)
 
 =back
 
-
 =head1 METHODS
 
-=item new 
+=over 4
+
+=item new
 
 returns a new Host object, and takes the arguments shown in this example:
 
     $obj = NetworkInfo::Discovery::Host->new( [dnsname	=> $text,]
 				[ipaddress	=> $ipaddress_text,]
 				[mac		=> $mac_text,]
-				[open_ports	=> $array_numbers,] );
+				[tcp_open_ports	=> $arrayref_numbers,]
+				[udp_open_ports	=> $arrayref_numbers,] );
 
 =cut
 
@@ -83,6 +85,7 @@ sub new {
 get set what we think the os type is (Linux, Solaris...)
 
 =cut
+
 sub is_discovery_host {
     my $self = shift;
 
@@ -97,6 +100,7 @@ sub is_discovery_host {
 get set what we think the os type is (Linux, Solaris...)
 
 =cut
+
 sub os_type {
     my $self = shift;
 
@@ -111,10 +115,12 @@ sub os_type {
 get set this dns name
 
 =cut
+
 sub dnsname {
     my $self = shift;
-
-    $self->{'dnsname'} = join(',',@_) if (@_);
+    my $name = shift;
+    
+    $self->{'dnsname'} = $name if ($name);
     return $self->{'dnsname'};
 }
 
@@ -125,6 +131,7 @@ sub dnsname {
 get set this ip address in the form "111.222.333.444"
 
 =cut
+
 sub ipaddress {
     my $self = shift;
 
@@ -139,10 +146,12 @@ sub ipaddress {
 get set this mac address in the form "aa:bb:bb:dd:ee:ff"
 
 =cut
+
 sub mac {
     my $self = shift;
+    my $yn  = shift;
 
-    $self->{'mac'} = join(',',@_) if (@_);
+    $self->{'mac'} =$yn if ($yn);
     return $self->{'mac'};
 }
 
@@ -151,10 +160,12 @@ sub mac {
 =item does_udp ([yes|no])
 
 =cut
+
 sub does_udp {
     my $self = shift;
+    my $yn  = shift;
 
-    $self->{'does_udp'} = join(',',@_) if (@_);
+    $self->{'does_udp'} = $yn if ($yn);
     return $self->{'does_udp'};
 }
 =pod
@@ -162,10 +173,12 @@ sub does_udp {
 =item does_tcp ([yes|no])
 
 =cut
+
 sub does_tcp {
     my $self = shift;
+    my $yn  = shift;
 
-    $self->{'does_tcp'} = join(',',@_) if (@_);
+    $self->{'does_tcp'} = $yn if ($yn);
     return $self->{'does_tcp'};
 }
 =pod
@@ -173,10 +186,12 @@ sub does_tcp {
 =item does_arp ([yes|no])
 
 =cut
+
 sub does_arp {
     my $self = shift;
+    my $yn  = shift;
 
-    $self->{'does_arp'} = join(',',@_) if (@_);
+    $self->{'does_arp'} = $yn if ($yn);
     return $self->{'does_arp'};
 }
 =pod
@@ -184,28 +199,71 @@ sub does_arp {
 =item does_ethernet ([yes|no])
 
 =cut
+
 sub does_ethernet {
     my $self = shift;
+    my $yn  = shift;
 
-    $self->{'does_ethernet'} = join(',',@_) if (@_);
+    $self->{'does_ethernet'} = $yn if ($yn);
     return $self->{'does_ethernet'};
 }
 
 =pod
 
-=item open_ports ([@ports])
+=item tcp_open_ports ([$ports])
 
 get/set the open listening ports for this host
 
 =cut
-sub open_ports {
-    my $self = shift;
-    my @ports = @_;
 
-    if (@ports) {
-	$self->{'open_ports'} = join(',',@ports);
-    } 
-    return $self->{'open_ports'};
+sub tcp_open_ports {
+    my $self = shift;
+    my $ports = shift;
+
+    # this is a hack to make reading the graph file work.
+    # discovery reads in a line like ports=> "53,25,99" and
+    # then calls us.
+
+    if ($ports =~ /^ARRAY/) {
+
+	if (@{$ports}) {
+	    $self->{'tcp_open_ports'} = join(',',@{$ports});
+	} 
+    } else {
+	# this is a string...
+	$self->{'tcp_open_ports'} = $ports;
+    }
+
+    return $self->{'tcp_open_ports'};
+}
+=pod
+
+=item udp_open_ports ([$ports])
+
+get/set the open listening ports for this host
+
+=cut
+
+sub udp_open_ports {
+    my $self = shift;
+    my $ports = shift;
+
+    # this is a hack to make reading the graph file work.
+    # discovery reads in a line like ports=> "53,25,99" and
+    # then calls us.
+
+    if ($ports =~ /^ARRAY/) {
+
+	if (@{$ports}) {
+	    $self->{'udp_open_ports'} = join(',',@{$ports});
+	} 
+    } else {
+	# this is a string...
+	$self->{'udp_open_ports'} = $ports;
+    }
+	
+    
+    return $self->{'udp_open_ports'};
 }
 
 =pod
@@ -217,6 +275,7 @@ that needs to be worked out.  the id right now is either just the ip address or
 "ipaddress+macaddress" if we know the mac address.
 
 =cut
+
 sub id {
     my $self = shift;
 
@@ -232,6 +291,7 @@ returns a hash of attributes about this host.  it is currently
 used only by the C<NetworkInfo::Discovery> module to store our graph info.
 
 =cut
+
 sub get_attributes {
     my $self = shift;
 
@@ -250,6 +310,7 @@ sub get_attributes {
 returns the host in a string representation.
 
 =cut
+
 sub as_string {
     my $self = shift;
     my $str;
@@ -263,10 +324,20 @@ sub as_string {
      
     return $str;
 }
+
+=back
   
+=head1 AVAILABILITY
+
+This module can be found in CPAN at http://www.cpan.org/authors/id/T/TS/TSCANLAN/
+or at http://they.gotdns.org:88/~tscanlan/perl/
 =head1 AUTHOR
 
-Tom Scanlan <tscanlan@openreach.com>
+Tom Scanlan <tscanlan@they.gotdns.org>
+
+=head1 AUTHOR
+
+Tom Scanlan <tscanlan@they.gotdns.org>
 
 =head1 SEE ALSO
 

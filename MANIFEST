@@ -3,6 +3,7 @@ lib/NetworkInfo/Discovery.pm
 lib/NetworkInfo/Discovery/Host.pm
 lib/NetworkInfo/Discovery/Sniff.pm
 lib/NetworkInfo/Discovery/Traceroute.pm
+lib/NetworkInfo/Discovery/Scan.pm
 lib/NetworkInfo/Discovery/Detect.pm
 example/sample_acl.pl
 example/sample.pl
