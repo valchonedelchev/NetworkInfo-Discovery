@@ -20,6 +20,13 @@ sub new {
 sub do_it {
     my $self = shift;
     
+    # temporary hack to avoid picking up broadcast addresses which 
+    # traceroute dumps on.  Thanks to John Towry for getting annoyed
+    # with that thus making me fix it :)
+    if ($self->host =~ /\d+\.\d+\.\d+\.255/) {
+	return undef;
+    }
+
     $self->{'tr'} = Net::Traceroute->new(
 	host=> $self->host, queries => 3, query_timeout => 2, max_ttl => $self->max_ttl
     );

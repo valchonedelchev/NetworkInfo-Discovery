@@ -194,6 +194,21 @@ sub does_arp {
     $self->{'does_arp'} = $yn if ($yn);
     return $self->{'does_arp'};
 }
+
+=pod
+
+=item does_icmp ([yes|no])
+
+=cut
+
+sub does_icmp {
+    my $self = shift;
+    my $yn  = shift;
+
+    $self->{'does_icmp'} = $yn if ($yn);
+    return $self->{'does_icmp'};
+}
+
 =pod
 
 =item does_ethernet ([yes|no])

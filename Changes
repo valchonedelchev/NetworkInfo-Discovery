@@ -1,6 +1,12 @@
 Revision history for NetworkInfo::Discovery and related modules:
 ----------------------------------------------------------------
 
+0.09 Wed Jan 15 16:42:05 EST 2003
+   - added a temporary hack to Traceroute.pm to prevent traceroute from
+     getting a broadcast address.
+   - Added "does_icmp" to Host.pm... I thought it was there... maybe 
+    I cut it by accident.
+
 0.08  Wed Jan 15 13:04:28 EST 2003
     - Added Scan.pm.  This can be used to scanl ranges of ipaddresses for
       open tcp or udp ports.
