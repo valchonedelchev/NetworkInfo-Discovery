@@ -13,7 +13,7 @@ use NetPacket::IP;
 use NetPacket::TCP;
 use NetPacket::UDP;
 use NetPacket::ARP qw(:ALL);
-use NetPacket::ICMP qw(:ALL); 
+use NetPacket::ICMP qw(:ALL);
 
 
 sub new {
@@ -26,7 +26,7 @@ sub new {
     $self->maxcapture(10);
     $self->snaplen(1500);
     $self->promisc(1);
-    
+
     # use user settings that were passed in.
     # for all args, see if we can autoload them
     foreach my $attr (keys %args) {
@@ -38,11 +38,11 @@ sub new {
     }
 
     return $self;
-} 
+}
 
 sub do_it {
     my $self = shift;
-    
+
     $self->capture;
     $self->process_ip_packets;
 
@@ -53,7 +53,7 @@ sub capture {
     my $self = shift;
 
     $self->{'device'} = Net::Pcap::lookupdev(\$self->{'error'});
-    defined $self->{'error'} 
+    defined $self->{'error'}
 	&& die 'Unable to determine network device for monitoring - ', $self->{'error'};
 
     Net::Pcap::lookupnet($self->device, \$self->{'address'}, \$self->{'netmask'}, \$self->{'error'})
@@ -63,25 +63,25 @@ sub capture {
     $self->realip(join('.',unpack("C4",pack("N",$self->address))) );
 
     $self->{'object'} = Net::Pcap::open_live(
-		    $self->device, 
-		    $self->snaplen, 
-		    $self->promisc, 
-		    $self->timeout, 
+		    $self->device,
+		    $self->snaplen,
+		    $self->promisc,
+		    $self->timeout,
 		    \$self->{'error'}
 		);
 
-    defined $self->{'object'} 
-	|| die 'Unable to create packet capture on device ', $self->device, ' - ', $self->{'error'}; 
+    defined $self->{'object'}
+	|| die 'Unable to create packet capture on device ', $self->device, ' - ', $self->{'error'};
 
-    Net::Pcap::compile( $self->object, \$self->{'filter'}, '', 0, $self->netmask) 
+    Net::Pcap::compile( $self->object, \$self->{'filter'}, '', 0, $self->netmask)
 	&& die 'Unable to compile packet capture filter';
 
-    Net::Pcap::setfilter($self->object, $self->filter) 
+    Net::Pcap::setfilter($self->object, $self->filter)
 	&& die 'Unable to set packet capture filter';
 
     Net::Pcap::loop($self->object, $self->maxcapture, \&get_packets, \@{$self->{'packetlist'}}) ;
 	# ||   die 'Unable to perform packet capture';
-    
+
     Net::Pcap::close($self->object);
 
 }
@@ -98,7 +98,7 @@ sub process_ip_packets {
     foreach my $packet ( @{$self->{'packetlist'}} ) {
         my $ether_obj = NetPacket::Ethernet->decode($packet);
         my $ether_data = $ether_obj->{"data"};
-    
+
 	if ($ether_obj->{type} == ETH_TYPE_ARP ) {
 	    my $arp_data = NetPacket::ARP->decode($ether_data);
 
@@ -128,15 +128,15 @@ sub process_ip_packets {
 #		$self->add_host($shost,$dhost);
 		$self->add_interface(
 		    {
-			ip=> hex2ip($arp_data->{spa}), 
+			ip=> hex2ip($arp_data->{spa}),
 			mac=> hex2mac($arp_data->{sha}),
 			mask=> $self->realmask,
 		    } ,
-		    { 
+		    {
 			ip=> hex2ip($arp_data->{tpa}),
 			mac => hex2mac($arp_data->{tha}),
 			mask=> $self->realmask,
-		    } 
+		    }
 		);
 
 	    } elsif ($arp_data->{opcode} == RARP_OPCODE_REQUEST) {
@@ -144,15 +144,15 @@ sub process_ip_packets {
 	    } elsif ($arp_data->{opcode} == RARP_OPCODE_REPLY) {
 		print "got RARP_OPCODE_REPLY\n";
 	    }
-    
+
         } elsif ($ether_obj->{type} == ETH_TYPE_IP ) {
 	    ## for IP packets
-       
+
 	    my $ip = NetPacket::IP->decode($ether_data);
-        
+
 	    if ($ip->{"proto"}  == 6 ) {
 		# TCP Stuff
-	        my ($sports, $dports); 
+	        my ($sports, $dports);
 		my $tcp = NetPacket::TCP->decode($ip->{'data'});
 		push @$sports, $tcp->{'src_port'};
 		push @{$dports}, $tcp->{'dest_port'};
@@ -182,8 +182,8 @@ sub process_ip_packets {
             } elsif ($ip->{"proto"}  == 17 ) {
 	       # UDP Stuff
 	       my $udp = NetPacket::UDP->decode($ip->{'data'});
-    
-	       my ($sports, $dports); 
+
+	       my ($sports, $dports);
 	       push @$sports, $udp->{'src_port'};
 	       push @{$dports}, $udp->{'dest_port'};
 
@@ -205,11 +205,11 @@ sub process_ip_packets {
 			mask=>( ($self->matches_subnet($ip->{'dest_ip'})) ? $self->realmask : ""),
 		    },
 		);
-    
+
             } elsif ($ip->{"proto"}  == 1 ) {
 		# ICMP stuff here
 		my $icmp = NetPacket::ICMP->decode($ip->{'data'});
-    
+
 		my $type;
 		if ($icmp->{type} ==  ICMP_ECHOREPLY ) {
 		    $type = "ICMP_ECHOREPLY";
@@ -235,14 +235,14 @@ sub process_ip_packets {
 		    $type = "ICMP_TSTAMPREPLY";
 		} elsif ($icmp->{type} ==  ICMP_IREQ ) {
 		    $type = "ICMP_IREQ";
-		} elsif ($icmp->{type} ==  ICMP_MASREQ ) {
-		    $type = "ICMP_MASREQ";
+		} elsif ($icmp->{type} ==  ICMP_MASKREQ ) {
+		    $type = "ICMP_MASKREQ";
 		} elsif ($icmp->{type} ==  ICMP_IREQREPLY ) {
 		    $type = "ICMP_IREQREPLY";
 		} elsif ($icmp->{type} ==  ICMP_MASKREPLY ) {
 		    $type = "ICMP_MASKREPLY";
 		}
-    
+
 #		my $shost = new NetworkInfo::Discovery::Host (ipaddress => "$ip->{'src_ip'}",
 #						      does_ethernet => "yes",
 #								does_icmp=>"yes");
@@ -262,10 +262,10 @@ sub process_ip_packets {
 		    },
 		);
 	    }
-    
+
         } else {
 	    print("Unknown Ethernet Type: $ether_obj->{src_mac}:$ether_obj->{dest_mac} $ether_obj->{type}\n");
-    
+
         }
     }
 }
@@ -343,7 +343,7 @@ sub matches_subnet {
 
     if ($self->realmask =~ m!^\d+\.\d+\.\d+\.\d+!) {
 	my $mask_bits=unpack("B32", pack("C4", split(/\./, $self->realmask)));
-	$bits=length( (split(/0/,$mask_bits,2))[0] );	
+	$bits=length( (split(/0/,$mask_bits,2))[0] );
     }
     # what is left over from the mask
     $bits = 32 - ($bits || 32);
@@ -366,7 +366,7 @@ sub hex2mac {
     my $data = shift;
 
     my ($a, $b, $c, $d, $e, $f) = ($data =~ m/^(..)(..)(..)(..)(..)(..)$/);
-    return "$a:$b:$c:$d:$e:$f"; 
+    return "$a:$b:$c:$d:$e:$f";
 }
 
 sub hex2ip {
@@ -377,6 +377,6 @@ sub hex2ip {
     $b = hex $b;
     $c = hex $c;
     $d = hex $d;
-    return "$a.$b.$c.$d"; 
+    return "$a.$b.$c.$d";
 }
 1;
