@@ -17,13 +17,13 @@ NetworkInfo::Discovery::Scan - host/port scanner
     use NetworkInfo::Discovery;
     use NetworkInfo::Discovery::Register;
     use NetworkInfo::Discovery::Scan;
-    
+
     my $disc = new NetworkInfo::Discovery::Register (
         'file' => '/tmp/scan.register',
         'autosave' => 1
         )
         || warn ("failed to make new obj");
-    
+
     my $scan = new NetworkInfo::Discovery::Scan (
         hosts=>["localhost", "127.0.0.1"],
         ports=>[53,99,1000..1004],
@@ -31,20 +31,20 @@ NetworkInfo::Discovery::Scan - host/port scanner
         'wait'=>0,
         protocol => 'tcp'
     );
-    
+
     $scan->do_it();
     $disc->add_interface($_) for ($scan->get_interfaces);
-    
+
     foreach my $h ($scan->get_interfaces) {
         print $h->{ip} . "\n";
         print "    has tcp ports: " . join(',',@{$h->{tcp_open_ports}}) . "\n" if (exists $h->{tcp_open_ports}) ;
     }
-    
+
     $scan->{protocol} = 'tcp';
     $scan->{ports} = [20..110];
     $scan->do_it();
     $disc->add_interface($_) for ($scan->get_interfaces);
-    
+
     foreach my $h ($scan->get_interfaces) {
         print $h->{ip} . "\n";
         print "    has tcp ports: " . join(',',@{$h->{tcp_open_ports}}) . "\n" if (exists $h->{tcp_open_ports}) ;
@@ -57,7 +57,7 @@ C<NetworkInfo::Discovery::Scan> is a host/port scanner that is used to
 find hosts that are too quiet for C<NetworkInfo::Discovery::Sniff> to
 find.
 It is a detection module subclassed from C<NetworkInfo::Discovery::Detect>.
-We can probe tcp or udp ports.  
+We can probe tcp or udp ports.
 There is the ability to set a timeout on the connection so that we don't
 wait all day for the scan to finish.
 There is a wait attribute that keeps us from scanning the network too fast
@@ -73,7 +73,7 @@ lists.
 
 =over 4
 
-=item new 
+=item new
 
 returns a new Scan object, and takes the arguments shown in this example:
 
@@ -105,7 +105,7 @@ sub new {
     my $self  = {
 	    # this will hold our expanded hosts
 	    _hosts => {}, # and this is our private version
-	   
+
 	    # set defaults
 	    timeout => 5,	# don't hang on connect forever
 	    'wait'  => 25,	# this is a wait between connect attempts in miliseconds
@@ -115,7 +115,7 @@ sub new {
 	    # these are from Detect.pm
 	    hostlist => [],
 	    hoplist => [],
-	    
+
     };
 
     bless ($self, $class);
@@ -129,9 +129,9 @@ sub new {
 	$self->{$k} = $v;
     }
 
-    
+
     return $self;
-} 
+}
 
 
 =pod
@@ -163,7 +163,7 @@ The aref can contain any of the following:
     "1.2.3.4/26"
 
 The CIDR-like address will be expanded into an address range and all the
-hosts in that range (minus the top one, and the bottom one) will be 
+hosts in that range (minus the top one, and the bottom one) will be
 added to the host list to be scanned.
 
 =cut
@@ -180,7 +180,7 @@ sub hosts {
 	    push (@{$self->{hosts}}, $_);
 #	    print "hosts -- single host: $_\n";
 
-	# if it is in CIDR notation, expand it    
+	# if it is in CIDR notation, expand it
 	} elsif (m#^(\d+\.\d+\.\d+\.\d+)(?:/(\d+))$#) {
 #	    print "hosts -- CIDR host: $_\n";
 
@@ -249,31 +249,31 @@ sub scan {
 
 	    # create a socket
 	    if ($self->{protocol} eq "udp") {
-		socket(HOST, PF_INET, SOCK_DGRAM, getprotobyname("udp")) 
+		socket(HOST, PF_INET, SOCK_DGRAM, getprotobyname("udp"))
 		        or (warn "failed to open socket: $!" && next);
 
 		# udp dosn't use "connect", send and recv instead
-		$success = $self->try_timeout(  
-		    sub { 
+		$success = $self->try_timeout(
+		    sub {
 			my $msg = "This is not an attack." .
 				"  NetworkInfo::Discovery 0.07.";
 			my $reply;
-			send (HOST, $msg, 0, $paddr) 
+			send (HOST, $msg, 0, $paddr)
 			    || die ("udp send to $host:$port : $!");
 			recv(HOST, $reply, 0, 0)
 			    || die ("udp recv from $host:$port : $!");
-			} 
+			}
 		    );
 	    } elsif ($self->{protocol} eq "tcp") {
 		socket(HOST, PF_INET, SOCK_STREAM, getprotobyname('tcp'))
 		        or (warn "failed to open socket: $!" && next);
 
 		# try the connect
-		$success = $self->try_timeout(  
-		    sub { 
-			connect(HOST, $paddr) 
-			    || die "connect error: $!";  
-			} 
+		$success = $self->try_timeout(
+		    sub {
+			connect(HOST, $paddr)
+			    || die "connect error: $!";
+			}
 		    );
 	    } else {
 		warn "unknown protocol: " . $self->{protocol} . "\n";
@@ -286,12 +286,12 @@ sub scan {
 
 	    # ... do something with the socket
 	    #print HOST "Why don't you call me anymore?\n\n\n";
-	    
+
 	    # and terminate the connection when we're done
 #	    print "    closing the socket\n";
 	    close(HOST);
 	}
-	
+
     }
 }
 
@@ -299,7 +299,7 @@ sub scan {
 
 =item make_hosts
 
-Builds our hostlist according to how 
+Builds our hostlist according to how
 C<NetworkInfo::Discovery::Detect> requires.
 
 =cut
@@ -348,13 +348,13 @@ sub try_timeout {
     my $self = shift;
     my $sub = shift;
 
-    
+
     eval {
 	 local $SIG{ALRM} = sub { die "timeout" };
 
 #	print "    setting alarm for " . $self->{timeout} ." seconds\n";
 	alarm($self->{timeout});
-	
+
 	&$sub();   # long-time operations here
 
 	alarm(0);
@@ -374,7 +374,7 @@ sub try_timeout {
 #	    print "with an unknown error: $@\n";
 	    alarm(0);           # clear the still-pending alarm
 	    return undef;
-	} 
+	}
     }
 #    print "    SUCCESS: got connection!\n";
 
@@ -392,7 +392,7 @@ Does a reverse lookup on the IP and returns a list of the names we found.
 sub lookup_ip {
     my $self = shift;
     my $ip = shift;
-   
+
     my @name_lookup;
     my @resolved_ips;
 
@@ -400,7 +400,7 @@ sub lookup_ip {
     #print "looking up $ip hostname:  $claimed_hostname, @name_lookup, @resolved_ips";
     @name_lookup      = gethostbyname($claimed_hostname)
 	or die "Could not look up $claimed_hostname : $!\n";
-    
+
     @resolved_ips     = map { inet_ntoa($_) }
 	    @name_lookup[ 4 .. $#name_lookup ];
 	    #print "looking up $ip hostname:  $claimed_hostname, @name_lookup, @resolved_ips";
@@ -408,15 +408,14 @@ sub lookup_ip {
 sub lookup {
     my $self = shift;
     my $sock = shift;
-    
+
     my $remote = getpeername($sock)
 	or die "Couldn't identify other end: $!\n";
     my ($port, $iaddr)   = unpack_sockaddr_in($remote);
     my $actual_ip        = inet_ntoa($iaddr);
     my $claimed_hostname = gethostbyaddr($iaddr, AF_INET);
-    my @name_lookup      = gethostbyname($claimed_hostname)
-	or die "Could not look up $claimed_hostname : $!\n";
-    
+    my @name_lookup      = gethostbyname($claimed_hostname);
+
     my @resolved_ips     = map { inet_ntoa($_) }
 	    @name_lookup[ 4 .. $#name_lookup ];
 	    #print "looking up $actual_ip: hostname:  $claimed_hostname, @name_lookup, @resolved_ips";
